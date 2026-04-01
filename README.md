@@ -1,125 +1,94 @@
-# Fundamentals-Of-Operating-System-2
-# -------- Task 1: Process Class --------
-class Process:
-    def __init__(self, pid, at, bt):
-        self.pid = pid
-        self.at = at
-        self.bt = bt
-        self.ct = 0
-        self.tat = 0
-        self.wt = 0
+# ---------------------------------------------
+# Banker's Algorithm - Complete Implementation
+# Covers Task 1 to Task 5
+# ---------------------------------------------
 
-
-# -------- Input Function --------
-def take_input():
+def input_data():
+    # Task 1: System Input
     n = int(input("Enter number of processes: "))
-    processes = []
+    m = int(input("Enter number of resources: "))
 
+    allocation = []
+    print("\nEnter Allocation Matrix:")
     for i in range(n):
-        at = int(input(f"Arrival Time of P{i+1}: "))
-        bt = int(input(f"Burst Time of P{i+1}: "))
-        processes.append(Process(i+1, at, bt))
+        allocation.append(list(map(int, input(f"P{i}: ").split())))
 
-    print("\nPID\tAT\tBT")
-    for p in processes:
-        print(f"P{p.pid}\t{p.at}\t{p.bt}")
+    maximum = []
+    print("\nEnter Maximum Matrix:")
+    for i in range(n):
+        maximum.append(list(map(int, input(f"P{i}: ").split())))
 
-    return processes
+    print("\nEnter Available Resources:")
+    available = list(map(int, input().split()))
 
-
-# -------- Task 2: FCFS --------
-def fcfs(processes):
-    pro = sorted(processes, key=lambda x: x.at)
-    time = 0
-
-    print("\n--- FCFS ---")
-    print("PID\tAT\tBT\tCT\tTAT\tWT")
-
-    total_wt = total_tat = 0
-
-    for p in pro:
-        if time < p.at:
-            time = p.at
-
-        time += p.bt
-        p.ct = time
-        p.tat = p.ct - p.at
-        p.wt = p.tat - p.bt
-
-        total_wt += p.wt
-        total_tat += p.tat
-
-        print(f"P{p.pid}\t{p.at}\t{p.bt}\t{p.ct}\t{p.tat}\t{p.wt}")
-
-    print("Average WT =", total_wt/len(pro))
-    print("Average TAT =", total_tat/len(pro))
-
-    return pro
+    return n, m, allocation, maximum, available
 
 
-# -------- Task 3: SJF --------
-def sjf(processes):
-    pro = processes[:]
-    completed = []
-    time = 0
+def calculate_need(n, m, allocation, maximum):
+    # Task 2: Need Matrix Calculation
+    need = []
+    for i in range(n):
+        row = []
+        for j in range(m):
+            row.append(maximum[i][j] - allocation[i][j])
+        need.append(row)
 
-    print("\n--- SJF ---")
-    print("PID\tAT\tBT\tCT\tTAT\tWT")
+    print("\nNeed Matrix:")
+    for i in range(n):
+        print(f"P{i}: {need[i]}")
 
-    total_wt = total_tat = 0
-
-    while pro:
-        ready = [p for p in pro if p.at <= time]
-
-        if not ready:
-            time += 1
-            continue
-
-        ready.sort(key=lambda x: x.bt)
-        p = ready[0]
-
-        time += p.bt
-        p.ct = time
-        p.tat = p.ct - p.at
-        p.wt = p.tat - p.bt
-
-        total_wt += p.wt
-        total_tat += p.tat
-
-        print(f"P{p.pid}\t{p.at}\t{p.bt}\t{p.ct}\t{p.tat}\t{p.wt}")
-
-        completed.append(p)
-        pro.remove(p)
-
-    print("Average WT =", total_wt/len(completed))
-    print("Average TAT =", total_tat/len(completed))
-
-    return completed
+    return need
 
 
-# -------- Task 4: Gantt Chart --------
-def gantt(process_list, name):
-    print(f"\nGantt Chart ({name}):")
-    for p in process_list:
-        print(f"| P{p.pid} ", end="")
-    print("|")
+def safety_algorithm(n, m, allocation, need, available):
+    # Task 3 & 4: Safety Algorithm + Safe Sequence
+    work = available.copy()
+    finish = [False] * n
+    safe_sequence = []
+
+    while len(safe_sequence) < n:
+        found = False
+
+        for i in range(n):
+            if not finish[i]:
+                if all(need[i][j] <= work[j] for j in range(m)):
+                    print(f"\nP{i} is executing...")
+
+                    for j in range(m):
+                        work[j] += allocation[i][j]
+
+                    safe_sequence.append(f"P{i}")
+                    finish[i] = True
+                    found = True
+
+                    print(f"Updated Available (Work): {work}")
+
+        if not found:
+            break
+
+    return finish, safe_sequence
 
 
-# -------- Task 5: Main --------
-if __name__ == "__main__":
-    processes = take_input()
+def result_analysis(n, finish, safe_sequence):
+    # Task 5: Result Analysis
+    print("\n--- Result ---")
 
-    fcfs_result = fcfs(processes)
-    gantt(fcfs_result, "FCFS")
-
-    sjf_result = sjf(processes)
-    gantt(sjf_result, "SJF")
-
-    print("\n--- Comparison ---")
-    fcfs_wt = sum(p.wt for p in fcfs_result) / len(fcfs_result)
-    sjf_wt = sum(p.wt for p in sjf_result) / len(sjf_result)
-
-    if sjf_wt < fcfs_wt:
-        print("SJF is better (less waiting time)")
+    if all(finish):
+        print("System is in SAFE state ✅")
+        print("Safe Sequence:", " -> ".join(safe_sequence))
+        print("\nExplanation: All processes completed successfully without deadlock.")
     else:
-        print("FCFS is better")
+        print("System is in UNSAFE state ❌")
+        print("\nExplanation: Deadlock may occur as not all processes could complete.")
+
+
+# ---------------- MAIN PROGRAM ----------------
+def main():
+    n, m, allocation, maximum, available = input_data()
+    need = calculate_need(n, m, allocation, maximum)
+    finish, safe_sequence = safety_algorithm(n, m, allocation, need, available)
+    result_analysis(n, finish, safe_sequence)
+
+
+# Run Program
+main()
